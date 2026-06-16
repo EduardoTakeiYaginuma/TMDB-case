@@ -44,6 +44,18 @@ class MovieService:
             'total_results': raw.get('total_results', 0),
         }
 
+    def get_trending(self) -> list[dict]:
+        raw = self._client.get_trending()
+        return [_normalize_summary(m) for m in raw.get('results', [])]
+
+    def get_popular(self) -> list[dict]:
+        raw = self._client.get_popular()
+        return [_normalize_summary(m) for m in raw.get('results', [])]
+
+    def get_top_rated(self) -> list[dict]:
+        raw = self._client.get_top_rated()
+        return [_normalize_summary(m) for m in raw.get('results', [])]
+
     def get_detail(self, tmdb_movie_id: int) -> dict[str, Any]:
         raw = self._client.get_movie_with_credits(tmdb_movie_id)
 

@@ -46,3 +46,12 @@ class TMDBClient:
             f'/movie/{movie_id}',
             {'append_to_response': 'credits'},
         )
+
+    def get_trending(self) -> dict:
+        return self._get('/trending/movie/week')
+
+    def get_popular(self) -> dict:
+        return self._get('/movie/popular')
+
+    def get_top_rated(self) -> dict:
+        return self._get('/movie/top_rated')
