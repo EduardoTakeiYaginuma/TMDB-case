@@ -12,6 +12,7 @@ interface RatingState {
   ratings: Rating[]
   isLoading: boolean
   error: string | null
+  hasFetched: boolean
   fetchRatings: () => Promise<void>
   addRating: (payload: CreateRatingPayload) => Promise<Rating>
   editRating: (tmdbMovieId: number, value: number) => Promise<Rating>
@@ -30,12 +31,14 @@ export const useRatingStore = create<RatingState>((set, get) => ({
   ratings: [],
   isLoading: false,
   error: null,
+  hasFetched: false,
 
   fetchRatings: async () => {
+    if (get().hasFetched) return
     set({ isLoading: true, error: null })
     try {
       const ratings = await getRatings()
-      set({ ratings, isLoading: false })
+      set({ ratings, isLoading: false, hasFetched: true })
     } catch (err) {
       set({ isLoading: false, error: extractError(err) })
     }
