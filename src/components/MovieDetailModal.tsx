@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useMovieDetail } from '@/hooks/useMovieDetail'
 import { useRatingStore } from '@/store/ratingStore'
+import { useToast } from '@/components/Toast'
 import StarRating from '@/components/StarRating'
 import CastRow from '@/components/CastRow'
 import LoadingSpinner from '@/components/LoadingSpinner'
@@ -23,41 +24,60 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function MovieDetailModal({ movie, onClose }: MovieDetailModalProps) {
-  const { detail, isLoading, error } = useMovieDetail(movie?.id ?? null)
-  const { getRatingForMovie, addRating, editRating, removeRating } = useRatingStore()
+  // Keep a local copy of movie so we can animate out after movie prop becomes null
+  const [currentMovie, setCurrentMovie] = useState<Movie | null>(movie)
+  const [isVisible, setIsVisible] = useState(false)
 
-  const existingRating = movie ? getRatingForMovie(movie.id) : undefined
+  useEffect(() => {
+    if (movie) {
+      setCurrentMovie(movie)
+      // Double rAF ensures the initial opacity-0 frame is painted before we transition
+      const id = requestAnimationFrame(() =>
+        requestAnimationFrame(() => setIsVisible(true))
+      )
+      return () => cancelAnimationFrame(id)
+    } else {
+      setIsVisible(false)
+      const t = setTimeout(() => setCurrentMovie(null), 200)
+      return () => clearTimeout(t)
+    }
+  }, [movie])
+
+  const { detail, isLoading, error } = useMovieDetail(currentMovie?.id ?? null)
+  const { getRatingForMovie, addRating, editRating, removeRating } = useRatingStore()
+  const showToast = useToast()
+
+  const existingRating = currentMovie ? getRatingForMovie(currentMovie.id) : undefined
 
   const [isEditing, setIsEditing] = useState(false)
   const [selectedStar, setSelectedStar] = useState(0)
   const [isSaving, setIsSaving] = useState(false)
   const [ratingError, setRatingError] = useState<string | null>(null)
 
-  // Sync star state whenever the movie or existing rating changes
   useEffect(() => {
     setSelectedStar(existingRating?.rating ?? 0)
     setIsEditing(false)
     setRatingError(null)
-  }, [movie?.id, existingRating?.rating])
+  }, [currentMovie?.id, existingRating?.rating])
 
   // Lock body scroll and handle Escape key
   useEffect(() => {
-    if (!movie) return
+    if (!currentMovie) return
     document.body.style.overflow = 'hidden'
-    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose() }
     document.addEventListener('keydown', handleKey)
     return () => {
       document.body.style.overflow = ''
       document.removeEventListener('keydown', handleKey)
     }
-  }, [movie, onClose])
+  }, [currentMovie]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleClose = useCallback(() => {
     onClose()
   }, [onClose])
 
   async function handleSaveRating() {
-    if (!movie || selectedStar < 1 || selectedStar > 5) {
+    if (!currentMovie || selectedStar < 1 || selectedStar > 5) {
       setRatingError('Selecione uma nota de 1 a 5.')
       return
     }
@@ -65,15 +85,17 @@ export default function MovieDetailModal({ movie, onClose }: MovieDetailModalPro
     setRatingError(null)
     try {
       if (existingRating) {
-        await editRating(movie.id, selectedStar)
+        await editRating(currentMovie.id, selectedStar)
         setIsEditing(false)
+        showToast('Avaliação atualizada!')
       } else {
         await addRating({
-          tmdb_movie_id: movie.id,
-          title: movie.title,
-          poster_path: movie.poster_path,
+          tmdb_movie_id: currentMovie.id,
+          title: currentMovie.title,
+          poster_path: currentMovie.poster_path,
           rating: selectedStar,
         })
+        showToast('Filme avaliado!')
       }
     } catch {
       setRatingError('Erro ao salvar avaliação. Tente novamente.')
@@ -83,12 +105,13 @@ export default function MovieDetailModal({ movie, onClose }: MovieDetailModalPro
   }
 
   async function handleDeleteRating() {
-    if (!movie || !existingRating) return
+    if (!currentMovie || !existingRating) return
     setIsSaving(true)
     setRatingError(null)
     try {
-      await removeRating(movie.id)
+      await removeRating(currentMovie.id)
       setSelectedStar(0)
+      showToast('Avaliação removida.', 'error')
     } catch {
       setRatingError('Erro ao remover avaliação. Tente novamente.')
     } finally {
@@ -96,17 +119,22 @@ export default function MovieDetailModal({ movie, onClose }: MovieDetailModalPro
     }
   }
 
-  if (!movie) return null
+  if (!currentMovie) return null
 
-  const data = detail ?? movie
+  const data = detail ?? currentMovie
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-y-auto"
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto
+                  transition-all duration-200 backdrop-blur-sm
+                  ${isVisible ? 'bg-black/75 opacity-100' : 'bg-black/0 opacity-0'}`}
       onClick={handleClose}
     >
       <div
-        className="bg-surface-card rounded-2xl w-full max-w-2xl my-auto shadow-2xl overflow-hidden"
+        className={`bg-surface-card rounded-2xl w-full max-w-2xl my-auto overflow-hidden
+                    shadow-2xl shadow-black/60 ring-1 ring-white/5
+                    transition-all duration-200
+                    ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Backdrop */}
@@ -162,10 +190,19 @@ export default function MovieDetailModal({ movie, onClose }: MovieDetailModalPro
                 {detail?.runtime && (
                   <span>{detail.runtime} min</span>
                 )}
-                {detail?.genres && detail.genres.length > 0 && (
-                  <span>{detail.genres.join(', ')}</span>
-                )}
               </div>
+              {detail?.genres && detail.genres.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {detail.genres.map((g) => (
+                    <span
+                      key={g}
+                      className="text-xs bg-surface-elevated border border-white/5 px-2 py-0.5 rounded-full text-gray-300"
+                    >
+                      {g}
+                    </span>
+                  ))}
+                </div>
+              )}
               {data.vote_average != null && data.vote_average > 0 && (
                 <p className="text-brand text-sm font-semibold mt-1">
                   ★ {data.vote_average.toFixed(1)} <span className="text-gray-500 font-normal">TMDB</span>

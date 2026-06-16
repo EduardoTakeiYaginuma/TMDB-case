@@ -7,9 +7,7 @@ interface HeroMovieProps {
 
 export default function HeroMovie({ movie, onSelect }: HeroMovieProps) {
   const year = movie.release_date?.slice(0, 4)
-  const overview = movie.overview?.length > 200
-    ? movie.overview.slice(0, 200).trimEnd() + '…'
-    : movie.overview
+  const overview = movie.overview
 
   return (
     <div className="relative w-full rounded-2xl overflow-hidden" style={{ minHeight: '420px' }}>
@@ -57,10 +55,14 @@ export default function HeroMovie({ movie, onSelect }: HeroMovieProps) {
 
           <button
             onClick={() => onSelect(movie)}
-            className="inline-flex items-center gap-2 bg-white text-black font-bold px-6 py-3 rounded-xl
-                       hover:bg-gray-100 transition-colors text-sm shadow-xl"
+            className="inline-flex items-center gap-2 bg-white text-black font-bold px-6 py-3 rounded-full
+                       hover:bg-brand transition-colors duration-200 text-sm
+                       shadow-xl shadow-black/40 hover:shadow-brand/30"
           >
-            ▶ Ver Detalhes
+            <svg className="w-4 h-4 fill-current" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3 2.5v11L13 8 3 2.5z"/>
+            </svg>
+            Ver Detalhes
           </button>
         </div>
       </div>

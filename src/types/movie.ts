@@ -6,6 +6,18 @@ export interface Movie {
   release_date: string | null
   vote_average: number | null
   overview: string
+  genre_ids?: number[]
+}
+
+export interface Genre {
+  id: number
+  name: string
+}
+
+export interface DiscoverParams {
+  genre_id?: number | null
+  year?: number | null
+  page?: number
 }
 
 export interface CastMember {

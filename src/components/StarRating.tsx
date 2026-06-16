@@ -20,8 +20,16 @@ export default function StarRating({
   size = 'md',
 }: StarRatingProps) {
   const [hovered, setHovered] = useState(0)
+  const [popped, setPopped] = useState(0)
 
   const display = hovered > 0 ? hovered : value
+
+  function handleClick(star: number) {
+    if (readonly) return
+    onChange?.(star)
+    setPopped(star)
+    setTimeout(() => setPopped(0), 300)
+  }
 
   return (
     <div
@@ -34,16 +42,17 @@ export default function StarRating({
           key={star}
           type="button"
           disabled={readonly}
-          onClick={() => onChange?.(star)}
+          onClick={() => handleClick(star)}
           onMouseEnter={() => !readonly && setHovered(star)}
-          className={`
-            leading-none transition-transform
+          className={`leading-none transition-transform duration-150
             ${sizeClasses[size]}
-            ${readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110'}
+            ${readonly ? 'cursor-default' : 'cursor-pointer'}
+            ${!readonly && hovered >= star ? 'scale-110' : ''}
+            ${popped === star ? 'animate-star-pop' : ''}
           `}
           aria-label={`${star} estrela${star > 1 ? 's' : ''}`}
         >
-          <span className={display >= star ? 'text-brand' : 'text-gray-600'}>
+          <span className={`transition-colors duration-100 ${display >= star ? 'text-brand' : 'text-gray-600'}`}>
             ★
           </span>
         </button>

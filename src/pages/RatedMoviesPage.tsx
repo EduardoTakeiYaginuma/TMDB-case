@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRatingStore } from '@/store/ratingStore'
 import MovieCard from '@/components/MovieCard'
 import LoadingSpinner from '@/components/LoadingSpinner'
@@ -10,6 +10,15 @@ import type { Rating } from '@/types/rating'
 interface RatedMoviesPageProps {
   onSelectMovie: (movie: Movie) => void
 }
+
+type SortKey = 'newest' | 'oldest' | 'rating_desc' | 'rating_asc'
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'newest', label: 'Mais recentes' },
+  { value: 'oldest', label: 'Mais antigas' },
+  { value: 'rating_desc', label: 'Maior nota' },
+  { value: 'rating_asc', label: 'Menor nota' },
+]
 
 function ratingToMovie(rating: Rating): Movie {
   return {
@@ -23,19 +32,41 @@ function ratingToMovie(rating: Rating): Movie {
   }
 }
 
+function sortRatings(ratings: Rating[], sort: SortKey): Rating[] {
+  return [...ratings].sort((a, b) => {
+    switch (sort) {
+      case 'oldest':
+        return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
+      case 'rating_desc':
+        return b.rating - a.rating
+      case 'rating_asc':
+        return a.rating - b.rating
+      case 'newest':
+      default:
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    }
+  })
+}
+
 export default function RatedMoviesPage({ onSelectMovie }: RatedMoviesPageProps) {
   const { ratings, isLoading, error, fetchRatings } = useRatingStore()
+  const [sort, setSort] = useState<SortKey>('newest')
 
   useEffect(() => {
     fetchRatings()
   }, [fetchRatings])
 
+  const sorted = useMemo(() => sortRatings(ratings, sort), [ratings, sort])
+
   return (
     <div className="space-y-8">
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-white">
-            Filmes <span className="text-brand">Avaliados</span>
+          <h2 className="text-3xl font-black text-white">
+            Filmes{' '}
+            <span className="bg-gradient-to-r from-brand to-amber-300 bg-clip-text text-transparent">
+              Avaliados
+            </span>
           </h2>
           {ratings.length > 0 && (
             <p className="text-gray-500 text-sm mt-1">
@@ -43,6 +74,19 @@ export default function RatedMoviesPage({ onSelectMovie }: RatedMoviesPageProps)
             </p>
           )}
         </div>
+
+        {ratings.length > 1 && (
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="bg-surface-card border border-surface-elevated text-sm text-gray-300
+                       rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/60"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {isLoading && <LoadingSpinner message="Carregando avaliações…" />}
@@ -61,9 +105,9 @@ export default function RatedMoviesPage({ onSelectMovie }: RatedMoviesPageProps)
         </div>
       )}
 
-      {!isLoading && !error && ratings.length > 0 && (
+      {!isLoading && !error && sorted.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {ratings.map((rating) => (
+          {sorted.map((rating) => (
             <div key={rating.tmdb_movie_id} className="flex flex-col gap-2">
               <MovieCard
                 movie={ratingToMovie(rating)}
