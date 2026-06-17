@@ -1,4 +1,4 @@
-# CineRate 🎬
+# TMDB-case 🎬
 
 Aplicação web de busca e avaliação de filmes usando a API pública do [TMDB](https://www.themoviedb.org/).
 
@@ -25,7 +25,7 @@ Aplicação web de busca e avaliação de filmes usando a API pública do [TMDB]
 ```bash
 # 1. Clone o repositório
 git clone <url-do-repositorio>
-cd case-camadaAi
+cd TMDB-case
 
 # 2. Configure as variáveis de ambiente
 cp .env.example .env
@@ -232,27 +232,10 @@ Todas as features obrigatórias e bônus foram implementadas.
 
 ## Decisões técnicas
 
-**SQLite em vez de PostgreSQL:** elimina um terceiro container no `docker-compose`, reduz a fricção para rodar localmente. A camada `Repository` abstrai o banco — trocar para PostgreSQL exige apenas mudar `DATABASE_URL`. Sem alteração de código.
-
-**Flask-Caching (SimpleCache):** cache em memória sem dependência de Redis ou Memcached. `trending`, `popular` e `top-rated` têm TTL de 10 minutos; gêneros têm 24h. O cache invalida automaticamente por expiração de tempo.
-
-**Zustand em vez de Context API ou Redux:** escopo de estado é simples (busca + ratings); Zustand entrega estado global sem boilerplate de Provider/Consumer e sem a verbosidade do Redux Toolkit.
-
-**`append_to_response=credits`:** a API do TMDB suporta combinar endpoints em uma única chamada HTTP. Isso reduz de 2 para 1 request por abertura de detalhe.
-
-**Debounce com `useRef` para `lastFired`:** evita disparar a mesma query duas vezes (via debounce e via submit simultâneos) sem precisar sincronizar com o estado do store.
-
-**Sort de avaliações client-side:** a lista de avaliações já está carregada em memória (via `hasFetched`). Ordenar localmente evita requisições extras e mantém a UX instantânea.
-
-**Vite proxy:** `/api/*` é redirecionado para o backend via proxy do Vite dev server. O frontend nunca precisa saber o endereço do backend — funciona igual em Docker (`backend:5000`) e localmente (`localhost:5000`).
-
-**`hasFetched` na ratingStore:** ao navegar entre Home e Filmes Avaliados, evita chamadas repetidas ao `GET /api/ratings`. O estado se mantém enquanto a sessão está ativa; o refresh da página reinicia a store e refaz o fetch normalmente.
-
-**JWT stateless no backend (Flask-JWT-Extended):** tokens com validade de 7 dias assinados com `JWT_SECRET_KEY`. O backend não mantém sessão — cada requisição protegida valida o token independentemente. Trocar para refresh tokens ou blacklist exigiria apenas adicionar `TokenBlocklist` model, sem mudar a lógica de negócio.
-
-**Token no localStorage via Zustand persist:** o interceptor Axios lê o token diretamente do localStorage para evitar dependência circular (`api.ts → authStore → authService → api.ts`). Um `CustomEvent` (`cinerate:auth-expired`) é disparado no 401 e capturado no `App.tsx` para limpar o estado sem acoplar as camadas.
-
-**Senhas com Werkzeug `generate_password_hash`:** já disponível como dependência transitiva do Flask — sem biblioteca extra. Usa PBKDF2-SHA256 por padrão.**
+- **SQLite:** banco de dados simples que não requer um container separado, ideal para desenvolvimento local.
+- **Cache:** resultados de trending, popular e top-rated são cacheados para reduzir chamadas à API do TMDB.
+- **JWT:** autenticação stateless — cada requisição valida o token sem manter sessão no servidor.
+- **Docker:** facilita que qualquer pessoa execute a aplicação completa com um único comando.
 
 ---
 
@@ -268,16 +251,3 @@ Este projeto foi implementado com auxílio do **Claude Code (Anthropic Claude So
 
 Todo o código foi revisado linha a linha, testado e é compreendido integralmente.
 
----
-
-## Observações para avaliação
-
-1. **Para testar rapidamente:** `docker compose up --build` + abrir http://localhost:3000 — insira a `TMDB_API_KEY` no `.env` antes.
-2. **Smoke test do backend:** `curl http://localhost:5000/api/health` deve retornar `{"status":"ok"}`.
-3. **Fluxo de auth:** clicar em "Cadastrar" no header → criar conta → modal fecha automaticamente.
-4. **Fluxo completo:** buscar um filme → clicar → avaliar (requer login) → navegar para "Filmes Avaliados" → editar ou remover.
-5. **Multi-usuário:** cada conta tem sua própria lista de avaliações isolada no banco.
-6. **Filtro por gênero/ano:** na tela inicial (sem busca ativa), clique em um chip de gênero ou selecione um ano.
-7. **Paginação:** resultados de busca com mais de 20 filmes exibem o botão "Carregar mais".
-8. **O banco persiste entre restarts** via Docker volume `sqlite_data`. Para resetar: `docker compose down -v`.
-9. **Testes:** `cd TMDB-api && pytest tests/ -v` — 22 testes, todos verdes.
