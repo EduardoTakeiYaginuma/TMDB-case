@@ -2,7 +2,7 @@ services:
   backend:
     build:
       context: ./TMDB-api
-    container_name: cinerate-backend
+    container_name: tmdb-case-backend
     ports:
       - "5000:5000"
     environment:
@@ -22,7 +22,7 @@ services:
   frontend:
     build:
       context: ./TMDB-ui
-    container_name: cinerate-frontend
+    container_name: tmdb-case-frontend
     ports:
       - "3000:3000"
     environment:
