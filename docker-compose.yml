@@ -1,0 +1,37 @@
+services:
+  backend:
+    build:
+      context: ./TMDB-api
+    container_name: cinerate-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - TMDB_API_KEY=${TMDB_API_KEY}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-me}
+      - DATABASE_URL=sqlite:////app/data/cinerate.db
+    volumes:
+      - sqlite_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./TMDB-ui
+    container_name: cinerate-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_TARGET=http://backend:5000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  sqlite_data:
+    driver: local

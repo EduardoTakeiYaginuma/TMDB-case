@@ -1,0 +1,21 @@
+# Backend (Python)
+TMDB-api/.venv/
+TMDB-api/__pycache__/
+TMDB-api/*.py[cod]
+TMDB-api/*.db
+TMDB-api/*.sqlite
+TMDB-api/instance/
+TMDB-api/.pytest_cache/
+TMDB-api/.env
+
+# Frontend (Node)
+TMDB-ui/node_modules/
+TMDB-ui/dist/
+TMDB-ui/.env
+TMDB-ui/.env.local
+TMDB-ui/*.local
+
+# Root
+.env
+*.db
+.DS_Store
