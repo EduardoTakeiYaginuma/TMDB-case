@@ -18,6 +18,7 @@ interface RatingState {
   editRating: (tmdbMovieId: number, value: number) => Promise<Rating>
   removeRating: (tmdbMovieId: number) => Promise<void>
   getRatingForMovie: (tmdbMovieId: number) => Rating | undefined
+  reset: () => void
 }
 
 function extractError(err: unknown): string {
@@ -27,14 +28,28 @@ function extractError(err: unknown): string {
   return 'Operação falhou. Tente novamente.'
 }
 
-export const useRatingStore = create<RatingState>((set, get) => ({
-  ratings: [],
+const INITIAL_STATE = {
+  ratings: [] as Rating[],
   isLoading: false,
   error: null,
   hasFetched: false,
+}
+
+export const useRatingStore = create<RatingState>((set, get) => ({
+  ...INITIAL_STATE,
 
   fetchRatings: async () => {
     if (get().hasFetched) return
+
+    // Skip if no token is persisted (user not authenticated)
+    try {
+      const raw = localStorage.getItem('cinerate-auth')
+      const token = raw ? (JSON.parse(raw)?.state?.token as string | undefined) : undefined
+      if (!token) return
+    } catch {
+      return
+    }
+
     set({ isLoading: true, error: null })
     try {
       const ratings = await getRatings()
@@ -69,4 +84,6 @@ export const useRatingStore = create<RatingState>((set, get) => ({
 
   getRatingForMovie: (tmdbMovieId) =>
     get().ratings.find((r) => r.tmdb_movie_id === tmdbMovieId),
+
+  reset: () => set(INITIAL_STATE),
 }))

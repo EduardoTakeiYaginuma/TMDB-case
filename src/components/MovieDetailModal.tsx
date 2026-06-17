@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useMovieDetail } from '@/hooks/useMovieDetail'
 import { useRatingStore } from '@/store/ratingStore'
+import { useAuthStore } from '@/store/authStore'
 import { useToast } from '@/components/Toast'
 import StarRating from '@/components/StarRating'
 import CastRow from '@/components/CastRow'
@@ -11,6 +12,7 @@ import type { Movie } from '@/types/movie'
 interface MovieDetailModalProps {
   movie: Movie | null
   onClose: () => void
+  onRequestAuth: () => void
 }
 
 function formatDate(dateStr: string | null): string {
@@ -23,7 +25,7 @@ function formatDate(dateStr: string | null): string {
   })
 }
 
-export default function MovieDetailModal({ movie, onClose }: MovieDetailModalProps) {
+export default function MovieDetailModal({ movie, onClose, onRequestAuth }: MovieDetailModalProps) {
   // Keep a local copy of movie so we can animate out after movie prop becomes null
   const [currentMovie, setCurrentMovie] = useState<Movie | null>(movie)
   const [isVisible, setIsVisible] = useState(false)
@@ -45,6 +47,7 @@ export default function MovieDetailModal({ movie, onClose }: MovieDetailModalPro
 
   const { detail, isLoading, error } = useMovieDetail(currentMovie?.id ?? null)
   const { getRatingForMovie, addRating, editRating, removeRating } = useRatingStore()
+  const { isAuthenticated } = useAuthStore()
   const showToast = useToast()
 
   const existingRating = currentMovie ? getRatingForMovie(currentMovie.id) : undefined
@@ -244,8 +247,22 @@ export default function MovieDetailModal({ movie, onClose }: MovieDetailModalPro
                   Sua Avaliação
                 </h3>
 
-                {/* Already rated, not editing */}
-                {existingRating && !isEditing ? (
+                {/* Not authenticated */}
+                {!isAuthenticated ? (
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm text-gray-400">
+                      Faça login para avaliar este filme.
+                    </p>
+                    <button
+                      onClick={onRequestAuth}
+                      className="px-4 py-1.5 bg-brand text-black text-xs font-bold rounded-lg
+                                 hover:bg-amber-400 transition-colors flex-shrink-0"
+                    >
+                      Entrar
+                    </button>
+                  </div>
+                ) : existingRating && !isEditing ? (
+                  /* Already rated, not editing */
                   <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
                       <StarRating value={existingRating.rating} readonly size="md" />

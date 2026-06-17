@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRatingStore } from '@/store/ratingStore'
+import { useAuthStore } from '@/store/authStore'
 import MovieCard from '@/components/MovieCard'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import ErrorMessage from '@/components/ErrorMessage'
@@ -9,6 +10,7 @@ import type { Rating } from '@/types/rating'
 
 interface RatedMoviesPageProps {
   onSelectMovie: (movie: Movie) => void
+  onRequestAuth: () => void
 }
 
 type SortKey = 'newest' | 'oldest' | 'rating_desc' | 'rating_asc'
@@ -48,8 +50,9 @@ function sortRatings(ratings: Rating[], sort: SortKey): Rating[] {
   })
 }
 
-export default function RatedMoviesPage({ onSelectMovie }: RatedMoviesPageProps) {
+export default function RatedMoviesPage({ onSelectMovie, onRequestAuth }: RatedMoviesPageProps) {
   const { ratings, isLoading, error, fetchRatings } = useRatingStore()
+  const { isAuthenticated } = useAuthStore()
   const [sort, setSort] = useState<SortKey>('newest')
 
   useEffect(() => {
@@ -95,7 +98,21 @@ export default function RatedMoviesPage({ onSelectMovie }: RatedMoviesPageProps)
         <ErrorMessage message={error} onRetry={fetchRatings} />
       )}
 
-      {!isLoading && !error && ratings.length === 0 && (
+      {!isLoading && !error && !isAuthenticated && (
+        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+          <span className="text-7xl opacity-20">🔒</span>
+          <p className="text-gray-400 text-lg font-medium">Faça login para ver suas avaliações</p>
+          <button
+            onClick={onRequestAuth}
+            className="px-6 py-2.5 bg-brand text-black text-sm font-bold rounded-full
+                       hover:bg-amber-400 transition-colors"
+          >
+            Entrar
+          </button>
+        </div>
+      )}
+
+      {!isLoading && !error && isAuthenticated && ratings.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
           <span className="text-7xl opacity-20">⭐</span>
           <p className="text-gray-400 text-lg font-medium">Nenhum filme avaliado ainda</p>
